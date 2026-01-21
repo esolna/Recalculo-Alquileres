@@ -5,10 +5,10 @@ from datetime import date
 # =========================
 # TÍTULO
 # =========================
-st.title("Recalculo de Alquileres")
+st.title("Recalculo de Alquileres con IPC")
 
 # =========================
-# DATOS SIMULADOS (estructura tipo KNIME)
+# DATOS SIMULADOS (estructura tipo SICOP / KNIME)
 # =========================
 data = {
     "institucion": [
@@ -56,10 +56,7 @@ else:
 # =========================
 # FECHA DE CORTE
 # =========================
-fecha_corte = st.date_input(
-    "Fecha de corte",
-    value=date.today()
-)
+fecha_corte = st.date_input("Fecha de corte", value=date.today())
 
 # =========================
 # TIPO DE IPC
@@ -70,8 +67,10 @@ tipo_ipc = st.radio(
 )
 
 # =========================
-# IPC ANUAL (solo si aplica)
+# IPC ANUAL
 # =========================
+ipc_final = None
+
 if tipo_ipc == "IPC Anual":
     ipc_anual = st.number_input(
         "IPC Anual (%)",
@@ -80,23 +79,59 @@ if tipo_ipc == "IPC Anual":
         value=0.0,
         step=0.01
     )
-else:
-    ipc_anual = None
+    ipc_final = ipc_anual / 100
 
 # =========================
-# IPC MENSUAL (placeholder)
+# IPC MENSUAL
 # =========================
 if tipo_ipc == "IPC Mensual (acumulado)":
-    st.info("En el siguiente paso se habilitará el ingreso de IPC mensual")
+    st.markdown("### IPC Mensual (%)")
+
+    meses = [
+        "Enero", "Febrero", "Marzo", "Abril",
+        "Mayo", "Junio", "Julio", "Agosto",
+        "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+
+    ipc_mensual = []
+
+    for mes in meses:
+        valor = st.number_input(
+            f"{mes}",
+            min_value=-100.0,
+            max_value=100.0,
+            value=0.0,
+            step=0.01,
+            key=mes
+        )
+        ipc_mensual.append(valor / 100)
+
+    # IPC acumulado compuesto
+    ipc_acumulado = 1
+    for ipc in ipc_mensual:
+        ipc_acumulado *= (1 + ipc)
+
+    ipc_final = ipc_acumulado - 1
+
+    st.success(f"IPC acumulado aplicado: {ipc_final * 100:.2f} %")
 
 # =========================
-# DEBUG VISUAL (TEMPORAL)
+# CÁLCULO FINAL
 # =========================
-st.markdown("---")
-st.subheader("Valores seleccionados (debug)")
+if proveedor_sel and ipc_final is not None:
+    fila = df[
+        (df["institucion"] == institucion_sel) &
+        (df["proveedor"] == proveedor_sel)
+    ]
 
-st.write("Institución:", institucion_sel)
-st.write("Proveedor:", proveedor_sel)
-st.write("Fecha de corte:", fecha_corte)
-st.write("Tipo de IPC:", tipo_ipc)
-st.write("IPC anual:", ipc_anual)
+    if not fila.empty:
+        precio_original = fila.iloc[0]["precio_unitario_contratado"]
+        precio_recalculado = precio_original * (1 + ipc_final)
+
+        st.markdown("---")
+        st.subheader("Resultado del Recalculo")
+
+        st.write("Precio original:", f"₡ {precio_original:,.0f}")
+        st.write("IPC aplicado:", f"{ipc_final * 100:.2f} %")
+        st.write("Precio recalculado:", f"₡ {precio_recalculado:,.0f}")
+
