@@ -1,28 +1,52 @@
 import streamlit as st
+import pandas as pd
 
 # =========================
-# TÍTULO DE LA APP
+# TÍTULO
 # =========================
 st.title("Recalculo de Alquileres")
 
-st.write("Seleccione la institución")
+# =========================
+# DATOS SIMULADOS (estructura KNIME)
+# =========================
+data = {
+    "institucion": [
+        "Ministerio de Salud",
+        "Ministerio de Salud",
+        "Ministerio de Educación",
+        "Ministerio de Educación",
+        "Municipalidad Central"
+    ],
+    "proveedor": [
+        "Proveedor A",
+        "Proveedor B",
+        "Proveedor C",
+        "Proveedor D",
+        "Proveedor E"
+    ],
+    "monto_alquiler": [
+        1000,
+        1500,
+        2000,
+        1800,
+        2200
+    ]
+}
+
+df = pd.DataFrame(data)
 
 # =========================
-# SELECTOR DE INSTITUCIÓN
+# SELECTOR INSTITUCIÓN
 # =========================
-instituciones = [
-    "Seleccione...",
-    "Institución A",
-    "Institución B",
-    "Institución C"
-]
+instituciones = ["Seleccione..."] + sorted(df["institucion"].unique().tolist())
 
-institucion_seleccionada = st.selectbox(
+institucion_sel = st.selectbox(
     "Institución",
     instituciones
 )
 
 # =========================
-# MOSTRAR SELECCIÓN (DEBUG)
+# MOSTRAR RESULTADO
 # =========================
-st.write("Institución seleccionada:", institucion_seleccionada)
+st.write("Institución seleccionada:", institucion_sel)
+
