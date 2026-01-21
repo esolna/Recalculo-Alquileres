@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from datetime import date
 
 # =========================
 # TÍTULO
@@ -40,25 +41,28 @@ df = pd.DataFrame(data)
 # =========================
 instituciones = ["Seleccione..."] + sorted(df["institucion"].unique().tolist())
 
-institucion_sel = st.selectbox(
-    "Institución",
-    instituciones
-)
-
+institucion_sel = st.selectbox("Institución", instituciones)
 st.write("Institución seleccionada:", institucion_sel)
 
 # =========================
-# SELECTOR PROVEEDOR (DEPENDIENTE)
+# SELECTOR PROVEEDOR
 # =========================
 if institucion_sel != "Seleccione...":
     df_filtrado = df[df["institucion"] == institucion_sel]
     proveedores = ["Seleccione..."] + sorted(df_filtrado["proveedor"].unique().tolist())
 
-    proveedor_sel = st.selectbox(
-        "Proveedor",
-        proveedores
-    )
-
+    proveedor_sel = st.selectbox("Proveedor", proveedores)
     st.write("Proveedor seleccionado:", proveedor_sel)
 else:
     st.info("Seleccione una institución para habilitar proveedores")
+    proveedor_sel = None
+
+# =========================
+# FECHA DE CORTE
+# =========================
+fecha_corte = st.date_input(
+    "Fecha de corte",
+    value=date.today()
+)
+
+st.write("Fecha de corte seleccionada:", fecha_corte)
