@@ -5,77 +5,129 @@ from datetime import date
 # =========================
 # TÍTULO
 # =========================
-st.title("Recalculo de Alquileres")
+st.title("Recalculo de Alquileres por IPC")
 
 # =========================
-# DATOS SIMULADOS (estructura KNIME)
+# DATOS BASE (Proveedor / Institución)
 # =========================
-data = {
+data_contratos = {
     "institucion": [
         "Ministerio de Salud",
-        "Ministerio de Salud",
-        "Ministerio de Educación",
         "Ministerio de Educación",
         "Municipalidad Central"
     ],
     "proveedor": [
         "Proveedor A",
         "Proveedor B",
-        "Proveedor C",
-        "Proveedor D",
-        "Proveedor E"
+        "Proveedor C"
     ],
-    "monto_alquiler": [
-        1000,
-        1500,
-        2000,
-        1800,
-        2200
+    "precio_base": [
+        1530000,
+        1800000,
+        2200000
     ]
 }
 
-df = pd.DataFrame(data)
+df_contratos = pd.DataFrame(data_contratos)
 
 # =========================
-# SELECTOR INSTITUCIÓN
+# TABLA IPC 2025 (mensual)
 # =========================
-instituciones = ["Seleccione..."] + sorted(df["institucion"].unique().tolist())
-institucion_sel = st.selectbox("Institución", instituciones)
+data_ipc = {
+    "mes": [
+        "2025-06", "2025-07", "2025-08",
+        "2025-09", "2025-10", "2025-11", "2025-12"
+    ],
+    "ipc_mensual": [0.04, -0.52, -0.21, -0.40, 0.19, 0.47, 0.08],
+    "ipc_interanual": [-0.22, -0.61, -0.94, -1.00, -0.38, -0.38, -1.23]
+}
 
-st.write("Institución seleccionada:", institucion_sel)
+df_ipc = pd.DataFrame(data_ipc)
 
 # =========================
-# SELECTOR PROVEEDOR
+# SELECTORES
 # =========================
+st.subheader("Selección del contrato")
+
+institucion_sel = st.selectbox(
+    "Institución",
+    ["Seleccione..."] + df_contratos["institucion"].unique().tolist()
+)
+
 if institucion_sel != "Seleccione...":
-    df_filtrado = df[df["institucion"] == institucion_sel]
-    proveedores = ["Seleccione..."] + sorted(df_filtrado["proveedor"].unique().tolist())
-    proveedor_sel = st.selectbox("Proveedor", proveedores)
+    df_inst = df_contratos[df_contratos["institucion"] == institucion_sel]
 
-    st.write("Proveedor seleccionado:", proveedor_sel)
+    proveedor_sel = st.selectbox(
+        "Proveedor",
+        ["Seleccione..."] + df_inst["proveedor"].tolist()
+    )
 else:
-    st.info("Seleccione una institución para habilitar proveedores")
-    proveedor_sel = None
+    proveedor_sel = "Seleccione..."
+
+fecha_inicio = st.date_input("Fecha inicio contrato", date(2025, 6, 26))
+fecha_corte = st.date_input("Fecha corte", date(2025, 12, 31))
 
 # =========================
-# FECHA DE CORTE
+# BOTÓN DE CÁLCULO
 # =========================
-fecha_corte = st.date_input(
-    "Fecha de corte",
-    value=date.today()
-)
+if st.button("Calcular recálculo"):
 
-st.write("Fecha de corte seleccionada:", fecha_corte)
+    if institucion_sel == "Seleccione..." or proveedor_sel == "Seleccione...":
+        st.error("Debe seleccionar institución y proveedor")
+    else:
+        # -------------------------
+        # FILTRAR CONTRATO
+        # -------------------------
+        contrato = df_contratos[
+            (df_contratos["institucion"] == institucion_sel) &
+            (df_contratos["proveedor"] == proveedor_sel)
+        ].iloc[0]
 
-# =========================
-# IPC ANUAL
-# =========================
-ipc_anual = st.number_input(
-    "IPC anual (%)",
-    min_value=-100.0,
-    max_value=100.0,
-    value=0.0,
-    step=0.1
-)
+        precio_base = contrato["precio_base"]
 
-st.write("IPC anual ingresado:", ipc_anual, "%")
+        # -------------------------
+        # CALCULO IPC MENSUAL
+        # -------------------------
+        df_ipc_calc = df_ipc.copy()
+
+        df_ipc_calc["factor_mensual"] = 1 + (df_ipc_calc["ipc_mensual"] / 100)
+        df_ipc_calc["factor_mensual_acumulado"] = df_ipc_calc["factor_mensual"].cumprod()
+        df_ipc_calc["alquiler_ipc_mensual"] = precio_base * df_ipc_calc["factor_mensual_acumulado"]
+
+        # -------------------------
+        # CALCULO IPC ANUAL
+        # -------------------------
+        df_ipc_calc["factor_interanual"] = 1 + (df_ipc_calc["ipc_interanual"] / 100)
+        df_ipc_calc["alquiler_ipc_interanual"] = precio_base * df_ipc_calc["factor_interanual"]
+
+        # -------------------------
+        # RESULTADOS
+        # -------------------------
+        st.success("Cálculo realizado correctamente")
+
+        st.subheader("Detalle del cálculo")
+        st.dataframe(
+            df_ipc_calc[[
+                "mes",
+                "ipc_mensual",
+                "alquiler_ipc_mensual",
+                "ipc_interanual",
+                "alquiler_ipc_interanual"
+            ]]
+        )
+
+        st.subheader("Resumen final")
+        st.metric(
+            "Precio base",
+            f"₡ {precio_base:,.0f}"
+        )
+
+        st.metric(
+            "Alquiler con IPC mensual (dic-2025)",
+            f"₡ {df_ipc_calc.iloc[-1]['alquiler_ipc_mensual']:,.0f}"
+        )
+
+        st.metric(
+            "Alquiler con IPC interanual (dic-2025)",
+            f"₡ {df_ipc_calc.iloc[-1]['alquiler_ipc_interanual']:,.0f}"
+        )
