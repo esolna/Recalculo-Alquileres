@@ -45,8 +45,20 @@ institucion_sel = st.selectbox(
     instituciones
 )
 
-# =========================
-# MOSTRAR RESULTADO
-# =========================
 st.write("Institución seleccionada:", institucion_sel)
 
+# =========================
+# SELECTOR PROVEEDOR (DEPENDIENTE)
+# =========================
+if institucion_sel != "Seleccione...":
+    df_filtrado = df[df["institucion"] == institucion_sel]
+    proveedores = ["Seleccione..."] + sorted(df_filtrado["proveedor"].unique().tolist())
+
+    proveedor_sel = st.selectbox(
+        "Proveedor",
+        proveedores
+    )
+
+    st.write("Proveedor seleccionado:", proveedor_sel)
+else:
+    st.info("Seleccione una institución para habilitar proveedores")
